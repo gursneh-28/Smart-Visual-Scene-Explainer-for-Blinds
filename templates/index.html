@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visual Scene Explainer</title>
+    <style>
+        body {
+            margin: 0;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+        h2 { margin-bottom: 10px; }
+        video {
+            width: 100%;
+            max-width: 640px;
+            border: 2px solid #444;
+            border-radius: 10px;
+        }
+        canvas { display: none; }
+        button {
+            margin-top: 20px;
+            padding: 15px 30px;
+            font-size: 18px;
+            background: #1a73e8;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+        button:active { background: #1558b0; }
+        #status {
+            margin-top: 15px;
+            font-size: 14px;
+            color: #aaa;
+        }
+    </style>
+</head>
+<body>
+    <h2>👁️ Visual Scene Explainer</h2>
+    <video id="video" autoplay playsinline muted></video>
+    <canvas id="canvas"></canvas>
+    <button onclick="captureAndSend()">📸 Describe Scene</button>
+    <div id="status">Tap the button to analyze your surroundings.</div>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const status = document.getElementById('status');
+
+        // Start camera
+        navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'environment' }, // rear camera on mobile
+            audio: false
+        })
+        .then(stream => { video.srcObject = stream; })
+        .catch(err => { status.textContent = '❌ Camera error: ' + err.message; });
+
+        // Capture frame and send to server
+        function captureAndSend() {
+            status.textContent = '⏳ Analyzing scene...';
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+
+            canvas.toBlob(blob => {
+                const formData = new FormData();
+                formData.append('image', blob, 'frame.jpg');
+
+                fetch('/analyze', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(res => res.json())
+                .then(data => {
+                    status.textContent = '✅ ' + data.description;
+                    // Speak the result
+                    const utterance = new SpeechSynthesisUtterance(data.description);
+                    window.speechSynthesis.speak(utterance);
+                })
+                .catch(err => { status.textContent = '❌ Error: ' + err.message; });
+            }, 'image/jpeg');
+        }
+    </script>
+</body>
+</html>
