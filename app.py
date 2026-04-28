@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, jsonify
-from detector import detect_objects
+from detector import detect_objects, normalize_find_target
 from ocr import read_text
 from spatial import describe_scene
 from llm import generate_description
@@ -25,7 +25,12 @@ def analyze():
         image_bytes = image_file.read()
         find_object = request.form.get('find', None)
 
-        # Run YOLO and OCR in parallel (still useful for fallback)
+        # Normalize the find target on the server side too
+        # so "mobile" → "cell phone" etc.
+        if find_object and find_object != 'text_only':
+            find_object = normalize_find_target(find_object)
+
+        # Run YOLO and OCR in parallel
         with concurrent.futures.ThreadPoolExecutor() as executor:
             future_detect = executor.submit(detect_objects, image_bytes)
             future_ocr    = executor.submit(read_text, image_bytes)
@@ -34,7 +39,7 @@ def analyze():
 
         spatial_descriptions = describe_scene(detected, frame_width, frame_height)
 
-        # Send actual image to Gemini Vision — much more accurate
+        # Send actual image + context to Gemini Vision
         description = generate_description(image_bytes, spatial_descriptions, texts, find_object)
 
         # Fallback if Gemini fails
@@ -42,18 +47,25 @@ def analyze():
             parts = []
             if find_object and find_object != 'text_only':
                 matches = [s for s in spatial_descriptions
-                          if find_object.lower() in s['label'].lower()]
-                parts.append(matches[0]['description'] if matches
-                            else f"Could not find {find_object}.")
+                           if find_object.lower() in s['label'].lower()]
+                if matches:
+                    m = matches[0]
+                    parts.append(
+                        f"{m['display_name'].capitalize()} found {m['horizontal']}, "
+                        f"approximately {m['distance_m']} metres away."
+                    )
+                else:
+                    parts.append(f"Could not find {find_object} in view.")
             elif find_object == 'text_only':
-                parts.append("I can read: " + " ".join([t['text'] for t in texts])
-                            if texts else "No text found.")
+                parts.append(
+                    "I can read: " + ". ".join([t['text'] for t in texts])
+                    if texts else "No text found in the scene."
+                )
             else:
-                for item in spatial_descriptions:
+                for item in spatial_descriptions[:5]:
                     parts.append(item['description'])
                 if texts:
-                    parts.append("I can also read: " +
-                                " ".join([t['text'] for t in texts]))
+                    parts.append("I can also read: " + ", ".join([t['text'] for t in texts[:5]]))
                 if not parts:
                     parts.append("Nothing detected in the scene.")
             description = ". ".join(parts) + "."
@@ -67,7 +79,7 @@ def analyze():
     except Exception as e:
         traceback.print_exc()
         return jsonify({
-            'description': 'Sorry, I had trouble analyzing the scene. Please try again.',
+            'description': 'Sorry, I had trouble analysing the scene. Please try again.',
             'objects':     [],
             'texts':       []
         })
