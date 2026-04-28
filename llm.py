@@ -1,73 +1,153 @@
 from google import genai
 from google.genai import types
 import os
-import base64
+import time
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# Keep track of the last few things said to avoid repetition
-# In a real app, this might be per-session
-last_descriptions = []
+# ── Singleton client — don't recreate per request ──
+_client = None
 
-def generate_description(image_bytes, spatial_descriptions, texts, find_object=None, conversation_history=None):
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        print("LLM error: No API key found")
-        return None
+def _get_client():
+    global _client
+    if _client is None:
+        api_key = os.environ.get("GEMINI_API_KEY")
+        if not api_key:
+            raise RuntimeError("GEMINI_API_KEY not set in .env")
+        _client = genai.Client(api_key=api_key)
+    return _client
 
-    client = genai.Client(api_key=api_key)
-    image_b64 = base64.b64encode(image_bytes).decode('utf-8')
+# ── System prompt — compact but rich context ──
+SYSTEM_PROMPT = """You are Vision — an AI assistant for the visually impaired.
+RULES (follow strictly):
+1. Respond in 1-3 short sentences MAX. Be concise. Do not ramble.
+2. Speak naturally like a helpful human: "I see...", "To your left...", "There's a..."
+3. ALWAYS mention safety hazards first (stairs, cars, people rushing).
+4. Use metric distances. Avoid technical jargon.
+5. For "find" requests: say exactly where the object is, or say you cannot see it.
+6. For text: read it naturally in order, skip unimportant symbols.
+7. Never say "I am an AI" or "as Vision" — just respond directly."""
 
-    # Build context from detected objects
-    object_context = ""
+def generate_description(
+    image_bytes: bytes,
+    spatial_descriptions: list,
+    texts: list,
+    find_object: str | None = None,
+    max_retries: int = 2
+) -> str | None:
+    client = _get_client()
+
+    # ── Build a lean context string ──
+    obj_ctx = ""
     if spatial_descriptions:
-        lines = [f"- {obj['display_name']}: {obj['horizontal']}, {obj['distance_str']}" for obj in spatial_descriptions[:8]]
-        object_context = "\nScene Data:\n" + "\n".join(lines)
+        lines = [
+            f"{obj['display_name']} ({obj['horizontal']}, ~{obj.get('distance_m', '?')}m)"
+            for obj in spatial_descriptions[:6]
+        ]
+        obj_ctx = "Detected: " + "; ".join(lines)
 
-    text_context = ""
+    txt_ctx = ""
     if texts:
-        text_context = "\nVisible Text: " + ", ".join([f'"{t["text"]}"' for t in texts[:5]])
+        txt_ctx = "Text visible: " + ", ".join(f'"{t["text"]}"' for t in texts[:5])
 
-    # System instruction for a premium, assistive AI persona
-    system_instruction = """
-    You are 'Vision' — a high-end AI assistant for the visually impaired.
-    Your goal is to be a helpful, calm, and sophisticated companion, NOT a robotic scanner.
-    
-    GUIDELINES:
-    1. BE CONVERSATIONAL: Speak like a human. Use "I see...", "There is...", "To your left, you'll find...".
-    2. BE CONCISE: Never use more than 2-3 sentences unless asked for detail.
-    3. DON'T BE ANNOYING: If the scene is the same as before, be very brief or mention only changes.
-    4. SAFETY FIRST: Always mention obstacles or hazards (stairs, people, cars) immediately.
-    5. INTERACTIVE: End with a helpful suggestion or an invitation for a question if appropriate.
-    6. DISTANCE: Always use metric distances (metres).
-    """
-
+    # ── Build targeted prompt ──
     if find_object and find_object != 'text_only':
-        prompt = f"The user is looking for: '{find_object}'.\n{object_context}\n{text_context}\nTell them if you see it and exactly where, or guide them to find it."
+        prompt = (
+            f"User is looking for: {find_object!r}.\n"
+            f"{obj_ctx}\n"
+            "Look at the image carefully. Tell them precisely where the object is "
+            "(left/right/centre, near/far). If not visible, say so clearly."
+        )
     elif find_object == 'text_only':
-        prompt = f"Read the text in this image clearly and naturally.\n{text_context}"
+        prompt = (
+            f"{txt_ctx}\n"
+            "Read ALL visible text in the image, in natural reading order. "
+            "Skip decorative symbols. Speak naturally."
+        )
     else:
-        prompt = f"Describe the current scene naturally.\n{object_context}\n{text_context}\nFocus on what's most relevant to someone walking or sitting here."
+        prompt = (
+            f"{obj_ctx}\n"
+            f"{txt_ctx}\n"
+            "Look at the image. Describe the most important things for someone who cannot see. "
+            "Mention safety concerns first, then the main objects and their locations."
+        )
+
+    # ── Call Gemini with retry logic ──
+    for attempt in range(max_retries + 1):
+        try:
+            response = client.models.generate_content(
+                model="gemini-2.0-flash",
+                config=types.GenerateContentConfig(
+                    system_instruction=SYSTEM_PROMPT,
+                    temperature=0.3,
+                    max_output_tokens=150,  # Force brevity — no walls of text
+                ),
+                contents=[
+                    types.Content(
+                        role="user",
+                        parts=[
+                            types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg"),
+                            types.Part.from_text(text=prompt),
+                        ],
+                    )
+                ],
+            )
+            text = response.text.strip()
+            return text if text else None
+
+        except Exception as e:
+            err = str(e)
+            # Rate limit → wait and retry
+            if "429" in err or "quota" in err.lower():
+                wait = 2 ** attempt  # Exponential backoff: 1s, 2s
+                time.sleep(wait)
+                continue
+            # Other errors → fail fast
+            print(f"LLM error (attempt {attempt + 1}): {e}")
+            if attempt == max_retries:
+                return None
+
+    return None
+
+def generate_description_stream(image_bytes, spatial_descriptions, texts, find_object=None):
+    """
+    Generator that yields text chunks as they arrive from the API.
+    For future use with SSE streaming endpoint.
+    """
+    client = _get_client()
+
+    obj_ctx = ""
+    if spatial_descriptions:
+        lines = [f"{obj['display_name']} ({obj['horizontal']})" for obj in spatial_descriptions[:5]]
+        obj_ctx = "Detected: " + "; ".join(lines)
+
+    txt_ctx = ""
+    if texts:
+        txt_ctx = "Text: " + ", ".join(f'"{t["text"]}"' for t in texts[:4])
+
+    prompt = f"{obj_ctx}\n{txt_ctx}\nDescribe the scene concisely for a visually impaired person."
 
     try:
-        response = client.models.generate_content(
+        for chunk in client.models.generate_content_stream(
             model="gemini-2.0-flash",
             config=types.GenerateContentConfig(
-                system_instruction=system_instruction,
-                temperature=0.4, # Lower temperature for more stable, less "random" descriptions
+                system_instruction=SYSTEM_PROMPT,
+                temperature=0.3,
+                max_output_tokens=150,
             ),
             contents=[
                 types.Content(
                     role="user",
                     parts=[
-                        types.Part(inline_data=types.Blob(mime_type="image/jpeg", data=image_b64)),
-                        types.Part(text=prompt)
-                    ]
+                        types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg"),
+                        types.Part.from_text(text=prompt),
+                    ],
                 )
-            ]
-        )
-        return response.text.strip()
+            ],
+        ):
+            if chunk.text:
+                yield chunk.text
     except Exception as e:
-        print(f"LLM error: {e}")
-        return None
+        print(f"Stream error: {e}")
+        yield None

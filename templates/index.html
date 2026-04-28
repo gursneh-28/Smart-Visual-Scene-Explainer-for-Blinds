@@ -1,335 +1,1089 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Vision — Premium Visual Assistant</title>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap');
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Vision AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet" />
+  <style>
+    /* ═══════════════════════════════════════════════
+       DESIGN TOKENS
+    ═══════════════════════════════════════════════ */
+    :root {
+      --bg:         #050608;
+      --surface:    #0c0d10;
+      --surface2:   #13141a;
+      --border:     rgba(255,255,255,0.06);
+      --accent:     #4f8aff;
+      --accent2:    #7c4dff;
+      --success:    #2ecc71;
+      --warn:       #f39c12;
+      --danger:     #e74c3c;
+      --text:       #e8ecf4;
+      --muted:      #5a6278;
+      --muted2:     #3a3f52;
 
-        :root {
-            --bg: #05070a;
-            --card: #0d1117;
-            --accent: #3d8ef8;
-            --text: #f0f4f8;
-            --dim: #8b9bb4;
-            --danger: #ff4d4d;
-        }
+      --r-card:     20px;
+      --r-pill:     999px;
+      --shadow:     0 24px 60px rgba(0,0,0,0.6);
+      --font:       'DM Sans', system-ui, sans-serif;
+      --mono:       'DM Mono', monospace;
+      --transition: 0.25s cubic-bezier(0.4,0,0.2,1);
+    }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            background: var(--bg);
-            color: var(--text);
-            font-family: 'Outfit', sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
-            overflow-x: hidden;
-        }
+    /* ═══════════════════════════════════════════════
+       RESET & BASE
+    ═══════════════════════════════════════════════ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        /* ── Modern Premium UI ── */
-        .glass {
-            background: rgba(13, 17, 23, 0.7);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255,255,255,0.05);
-            border-radius: 24px;
-        }
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 15px;
+      line-height: 1.5;
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
 
-        header {
-            width: 100%;
-            max-width: 600px;
-            padding: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+    /* ═══════════════════════════════════════════════
+       LAYOUT SHELL
+    ═══════════════════════════════════════════════ */
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      max-width: 480px;
+      margin: 0 auto;
+      position: relative;
+    }
 
-        header h1 {
-            font-size: 22px;
-            font-weight: 700;
-            letter-spacing: -0.5px;
-            background: linear-gradient(90deg, #3d8ef8, #a855f7);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
+    /* ═══════════════════════════════════════════════
+       TOPBAR
+    ═══════════════════════════════════════════════ */
+    #topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px 10px;
+      flex-shrink: 0;
+    }
 
-        #videoContainer {
-            width: 92%;
-            max-width: 550px;
-            aspect-ratio: 4/3;
-            position: relative;
-            border-radius: 28px;
-            overflow: hidden;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
-            background: #000;
-        }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
 
-        video { width: 100%; height: 100%; object-fit: cover; }
+    .logo-icon {
+      width: 28px;
+      height: 28px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
 
-        .scan-line {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 2px;
-            background: var(--accent);
-            box-shadow: 0 0 15px var(--accent);
-            opacity: 0;
-            z-index: 10;
-        }
-        .scanning .scan-line {
-            animation: scan 2s linear infinite;
-            opacity: 1;
-        }
-        @keyframes scan {
-            0% { top: 0%; }
-            100% { top: 100%; }
-        }
+    .logo-text {
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text);
+    }
 
-        /* ── Main Interaction Card ── */
-        #interactionCard {
-            width: 92%;
-            max-width: 550px;
-            margin-top: -30px;
-            z-index: 20;
-            padding: 24px;
-            min-height: 140px;
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 11px;
+      border-radius: var(--r-pill);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      font-size: 11px;
+      font-family: var(--mono);
+      color: var(--muted);
+      transition: var(--transition);
+    }
 
-        #statusLabel {
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            color: var(--accent);
-            margin-bottom: 8px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--success);
+      transition: background var(--transition);
+    }
 
-        #statusLabel span {
-            width: 8px; height: 8px; border-radius: 50%;
-            background: var(--accent);
-            box-shadow: 0 0 8px var(--accent);
-        }
+    .status-dot.analyzing { background: var(--accent); animation: dot-pulse 1s infinite; }
+    .status-dot.speaking  { background: var(--accent2); animation: dot-pulse 0.7s infinite; }
+    .status-dot.error     { background: var(--danger); }
 
-        #mainText {
-            font-size: 18px;
-            line-height: 1.5;
-            font-weight: 400;
-            color: var(--text);
-        }
+    @keyframes dot-pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.4; transform: scale(0.7); }
+    }
 
-        /* ── Mic & Commands ── */
-        #voiceIndicator {
-            margin-top: 15px;
-            font-size: 14px;
-            color: var(--dim);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+    /* ═══════════════════════════════════════════════
+       VIDEO VIEWPORT
+    ═══════════════════════════════════════════════ */
+    #viewport {
+      position: relative;
+      flex-shrink: 0;
+      margin: 0 16px;
+      border-radius: var(--r-card);
+      overflow: hidden;
+      background: #000;
+      aspect-ratio: 4/3;
+      box-shadow: var(--shadow), 0 0 0 1px var(--border);
+    }
 
-        .pulse-ring {
-            width: 12px; height: 12px; border-radius: 50%;
-            border: 2px solid var(--accent);
-            animation: ring-pulse 1.5s infinite;
-        }
-        @keyframes ring-pulse {
-            0% { transform: scale(1); opacity: 1; }
-            100% { transform: scale(2.5); opacity: 0; }
-        }
+    #video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
 
-        #stopButton {
-            position: fixed;
-            bottom: 40px;
-            padding: 18px 40px;
-            background: var(--danger);
-            color: white;
-            border: none;
-            border-radius: 40px;
-            font-weight: 700;
-            font-size: 16px;
-            box-shadow: 0 10px 30px rgba(255, 77, 77, 0.4);
-            display: none;
-            z-index: 100;
-            cursor: pointer;
-        }
+    /* Corner brackets */
+    .corner {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      opacity: 0.6;
+      z-index: 5;
+    }
+    .corner::before, .corner::after {
+      content: '';
+      position: absolute;
+      background: var(--accent);
+      border-radius: 1px;
+    }
+    .corner::before { width: 100%; height: 2px; top: 0; left: 0; }
+    .corner::after  { width: 2px; height: 100%; top: 0; left: 0; }
+    .corner.tr { top: 12px; right: 12px; transform: rotate(90deg); }
+    .corner.tl { top: 12px; left: 12px; }
+    .corner.br { bottom: 12px; right: 12px; transform: rotate(180deg); }
+    .corner.bl { bottom: 12px; left: 12px; transform: rotate(270deg); }
 
-        canvas { display: none; }
-    </style>
+    /* Scan line */
+    #scanLine {
+      position: absolute;
+      left: 0; top: -2px;
+      width: 100%; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      box-shadow: 0 0 12px var(--accent);
+      opacity: 0;
+      z-index: 10;
+      transition: opacity 0.3s;
+    }
+
+    #viewport.scanning #scanLine {
+      opacity: 1;
+      animation: scan-move 1.6s ease-in-out infinite;
+    }
+
+    @keyframes scan-move {
+      0%   { top: 0%; }
+      100% { top: 100%; }
+    }
+
+    /* Object detection overlays */
+    #detectionLayer {
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      pointer-events: none;
+    }
+
+    .det-box {
+      position: absolute;
+      border: 1.5px solid var(--accent);
+      border-radius: 4px;
+      opacity: 0;
+      animation: det-appear 0.3s ease forwards;
+    }
+
+    .det-label {
+      position: absolute;
+      top: -22px;
+      left: -1px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 10px;
+      font-family: var(--mono);
+      padding: 2px 6px;
+      border-radius: 3px;
+      white-space: nowrap;
+    }
+
+    @keyframes det-appear {
+      from { opacity: 0; transform: scale(0.95); }
+      to   { opacity: 0.85; transform: scale(1); }
+    }
+
+    canvas { display: none; }
+
+    /* ═══════════════════════════════════════════════
+       BOTTOM PANEL
+    ═══════════════════════════════════════════════ */
+    #panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 12px 16px 16px;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    /* ── Response card ── */
+    #responseCard {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-card);
+      padding: 16px;
+      flex-shrink: 0;
+      min-height: 90px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #responseCard::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(79,138,255,0.04), transparent 60%);
+      pointer-events: none;
+    }
+
+    #responseLabel {
+      font-size: 10px;
+      font-family: var(--mono);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #responseText {
+      font-size: 15px;
+      font-weight: 400;
+      line-height: 1.55;
+      color: var(--text);
+      min-height: 44px;
+    }
+
+    #responseText.placeholder { color: var(--muted); font-style: italic; }
+
+    /* Typing dots */
+    .typing-dots { display: inline-flex; gap: 3px; align-items: center; }
+    .typing-dots span {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: typing 1.2s infinite;
+    }
+    .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes typing {
+      0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+      30%           { transform: translateY(-4px); opacity: 1; }
+    }
+
+    /* Latency badge */
+    #latencyBadge {
+      position: absolute;
+      bottom: 10px;
+      right: 12px;
+      font-size: 10px;
+      font-family: var(--mono);
+      color: var(--muted2);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    #latencyBadge.visible { opacity: 1; }
+
+    /* ── History strip ── */
+    #historyStrip {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      flex-shrink: 0;
+      scrollbar-width: none;
+      padding-bottom: 2px;
+    }
+    #historyStrip::-webkit-scrollbar { display: none; }
+
+    .history-chip {
+      flex-shrink: 0;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-pill);
+      padding: 5px 12px;
+      font-size: 12px;
+      color: var(--muted);
+      white-space: nowrap;
+      max-width: 160px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+    .history-chip:hover {
+      color: var(--text);
+      border-color: var(--muted2);
+    }
+
+    /* ── Voice row ── */
+    #voiceRow {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    /* Waveform */
+    #waveform {
+      flex: 1;
+      height: 36px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-pill);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 14px;
+      gap: 2px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .wave-bar {
+      width: 2px;
+      border-radius: 2px;
+      background: var(--accent);
+      height: 4px;
+      transition: height 0.08s ease;
+      opacity: 0.5;
+    }
+
+    .wave-bar.active { opacity: 1; }
+
+    #voiceText {
+      position: absolute;
+      font-size: 12px;
+      color: var(--muted);
+      font-style: italic;
+      pointer-events: none;
+    }
+
+    /* ── Action buttons ── */
+    #actionsRow {
+      display: flex;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .btn {
+      flex: 1;
+      height: 44px;
+      border: none;
+      border-radius: 12px;
+      font-family: var(--font);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      outline: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+      box-shadow: 0 4px 20px rgba(79,138,255,0.3);
+    }
+
+    .btn-primary:active { transform: scale(0.97); box-shadow: none; }
+
+    .btn-secondary {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+    .btn-secondary:hover  { color: var(--text); border-color: var(--muted2); }
+    .btn-secondary:active { transform: scale(0.97); }
+
+    .btn-danger {
+      background: rgba(231,76,60,0.15);
+      border: 1px solid rgba(231,76,60,0.3);
+      color: var(--danger);
+    }
+    .btn-danger:active { transform: scale(0.97); }
+
+    /* ── Command hints ── */
+    #hintsRow {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .hint {
+      font-size: 11px;
+      font-family: var(--mono);
+      color: var(--muted2);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-pill);
+      padding: 3px 9px;
+    }
+
+    /* ═══════════════════════════════════════════════
+       DETECTED OBJECTS STRIP
+    ═══════════════════════════════════════════════ */
+    #objectsStrip {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      flex-shrink: 0;
+      scrollbar-width: none;
+      min-height: 28px;
+    }
+    #objectsStrip::-webkit-scrollbar { display: none; }
+
+    .obj-tag {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-pill);
+      padding: 3px 10px;
+      font-size: 11px;
+      color: var(--muted);
+      font-family: var(--mono);
+      animation: tag-pop 0.2s ease forwards;
+      opacity: 0;
+    }
+
+    .obj-tag-conf {
+      color: var(--accent);
+      font-size: 10px;
+    }
+
+    @keyframes tag-pop {
+      from { opacity: 0; transform: scale(0.9); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+
+    /* ═══════════════════════════════════════════════
+       TOAST NOTIFICATION
+    ═══════════════════════════════════════════════ */
+    #toast {
+      position: fixed;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-pill);
+      padding: 10px 20px;
+      font-size: 13px;
+      color: var(--text);
+      opacity: 0;
+      transition: all 0.3s;
+      pointer-events: none;
+      white-space: nowrap;
+      z-index: 100;
+    }
+
+    #toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* ═══════════════════════════════════════════════
+       PROGRESS BAR
+    ═══════════════════════════════════════════════ */
+    #progressBar {
+      position: fixed;
+      top: 0; left: 0;
+      height: 2px;
+      width: 0%;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      transition: width 0.3s, opacity 0.3s;
+      z-index: 999;
+      opacity: 0;
+    }
+
+    #progressBar.active {
+      opacity: 1;
+      animation: progress-anim 1.5s ease-in-out infinite;
+    }
+
+    @keyframes progress-anim {
+      0%   { width: 0%; opacity: 1; }
+      70%  { width: 80%; opacity: 1; }
+      100% { width: 100%; opacity: 0; }
+    }
+
+  </style>
 </head>
 <body>
 
-    <header>
-        <h1>VISION</h1>
-        <div id="connectionStatus" style="font-size: 10px; color: #4caf50;">● Connected</div>
-    </header>
+<div id="progressBar"></div>
 
-    <div id="videoContainer">
-        <video id="video" autoplay playsinline muted></video>
-        <div class="scan-line"></div>
+<div id="app">
+
+  <!-- TOPBAR -->
+  <div id="topbar">
+    <div class="logo">
+      <div class="logo-icon">👁</div>
+      <span class="logo-text">Vision</span>
+    </div>
+    <div class="status-badge">
+      <div class="status-dot" id="statusDot"></div>
+      <span id="statusText">Ready</span>
+    </div>
+  </div>
+
+  <!-- CAMERA VIEWPORT -->
+  <div id="viewport">
+    <video id="video" autoplay playsinline muted></video>
+    <div class="corner tl"></div>
+    <div class="corner tr"></div>
+    <div class="corner bl"></div>
+    <div class="corner br"></div>
+    <div id="scanLine"></div>
+    <div id="detectionLayer"></div>
+  </div>
+
+  <!-- BOTTOM PANEL -->
+  <div id="panel">
+
+    <!-- Response card -->
+    <div id="responseCard">
+      <div id="responseLabel">
+        <span>◎</span>
+        <span id="responseLabelText">Vision</span>
+      </div>
+      <div id="responseText" class="placeholder">Watching... say "describe" or wait for auto-scan.</div>
+      <div id="latencyBadge"></div>
     </div>
 
-    <div id="interactionCard" class="glass">
-        <div id="statusLabel"><span></span> <span id="statusType">Ready</span></div>
-        <div id="mainText">I'm watching. Say "Describe" or just wait for me to see something.</div>
-        
-        <div id="voiceIndicator">
-            <div class="pulse-ring"></div>
-            <span id="interimText">Listening...</span>
-        </div>
+    <!-- Detected objects -->
+    <div id="objectsStrip"></div>
+
+    <!-- History -->
+    <div id="historyStrip"></div>
+
+    <!-- Voice waveform -->
+    <div id="voiceRow">
+      <div id="waveform">
+        <span id="voiceText">Listening…</span>
+      </div>
     </div>
 
-    <button id="stopButton" onclick="stopAll()">STOP SPEAKING</button>
+    <!-- Action buttons -->
+    <div id="actionsRow">
+      <button class="btn btn-primary" onclick="triggerAnalysis('full')">
+        <span>◉</span> Describe
+      </button>
+      <button class="btn btn-secondary" onclick="triggerAnalysis('text_only')">
+        <span>≡</span> Read Text
+      </button>
+      <button class="btn btn-danger" id="stopBtn" onclick="stopSpeaking()" style="display:none;flex:0.6">
+        ✕ Stop
+      </button>
+    </div>
 
-    <canvas id="canvas"></canvas>
+    <!-- Hints -->
+    <div id="hintsRow">
+      <span class="hint">"describe"</span>
+      <span class="hint">"find [object]"</span>
+      <span class="hint">"read"</span>
+      <span class="hint">"stop"</span>
+    </div>
 
-    <script>
-        const video = document.getElementById('video');
-        const canvas = document.getElementById('canvas');
-        const mainText = document.getElementById('mainText');
-        const statusType = document.getElementById('statusType');
-        const interimText = document.getElementById('interimText');
-        const stopButton = document.getElementById('stopButton');
-        const videoContainer = document.getElementById('videoContainer');
+  </div>
+</div>
 
-        let isAnalyzing = false;
-        let currentSpeech = null;
-        let lastSceneHash = "";
-        let analysisId = 0;
-        let speechRate = 0.9; // Slightly slower for better clarity
-        let autoScanTimer = null;
+<div id="toast"></div>
+<canvas id="canvas"></canvas>
 
-        // ── Camera Setup ──
-        navigator.mediaDevices.getUserMedia({
-            video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
-        }).then(stream => {
-            video.srcObject = stream;
-            startVoiceRecognition();
-            startAutoScan();
-        });
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════════
+const state = {
+  isAnalyzing:    false,
+  isSpeaking:     false,
+  autoScanTimer:  null,
+  lastSceneHash:  '',
+  history:        [],
+  analysisId:     0,
+  waveInterval:   null,
+  lastLatency:    null,
+};
 
-        function updateStatus(type, text) {
-            statusType.textContent = type;
-            if (text) mainText.textContent = text;
-            if (type === 'Analyzing') videoContainer.classList.add('scanning');
-            else videoContainer.classList.remove('scanning');
-        }
+// ═══════════════════════════════════════════════════════════════
+//  DOM REFS
+// ═══════════════════════════════════════════════════════════════
+const video         = document.getElementById('video');
+const canvas        = document.getElementById('canvas');
+const viewport      = document.getElementById('viewport');
+const responseText  = document.getElementById('responseText');
+const statusDot     = document.getElementById('statusDot');
+const statusText    = document.getElementById('statusText');
+const stopBtn       = document.getElementById('stopBtn');
+const detLayer      = document.getElementById('detectionLayer');
+const objectsStrip  = document.getElementById('objectsStrip');
+const historyStrip  = document.getElementById('historyStrip');
+const voiceText     = document.getElementById('voiceText');
+const progressBar   = document.getElementById('progressBar');
+const latencyBadge  = document.getElementById('latencyBadge');
+const waveform      = document.getElementById('waveform');
+const toast         = document.getElementById('toast');
 
-        // ── Scene Analysis ──
-        async function analyzeScene(target = null) {
-            const thisId = ++analysisId;
-            isAnalyzing = true;
-            updateStatus('Analyzing');
+// ═══════════════════════════════════════════════════════════════
+//  STATUS SYSTEM
+// ═══════════════════════════════════════════════════════════════
+const STATUS = {
+  ready:     { dot: '',          label: 'Ready',      text: null },
+  analyzing: { dot: 'analyzing', label: 'Analyzing…', text: null },
+  speaking:  { dot: 'speaking',  label: 'Speaking',   text: null },
+  error:     { dot: 'error',     label: 'Error',      text: null },
+};
 
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            canvas.getContext('2d').drawImage(video, 0, 0);
+function setStatus(key, customText) {
+  const s = STATUS[key];
+  statusDot.className = 'status-dot ' + (s.dot || '');
+  statusText.textContent = s.label;
+  if (key === 'analyzing') {
+    viewport.classList.add('scanning');
+    progressBar.classList.add('active');
+    responseText.className = '';
+    responseText.innerHTML = `<div class="typing-dots"><span></span><span></span><span></span></div>`;
+    latencyBadge.classList.remove('visible');
+  } else {
+    viewport.classList.remove('scanning');
+    progressBar.classList.remove('active');
+    if (key === 'ready' && customText) {
+      responseText.className = '';
+      responseText.textContent = customText;
+    }
+  }
+}
 
-            canvas.toBlob(async (blob) => {
-                const formData = new FormData();
-                formData.append('image', blob, 'frame.jpg');
-                if (target) formData.append('find', target);
+// ═══════════════════════════════════════════════════════════════
+//  TOAST
+// ═══════════════════════════════════════════════════════════════
+let toastTimer;
+function showToast(msg) {
+  clearTimeout(toastTimer);
+  toast.textContent = msg;
+  toast.classList.add('show');
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 2500);
+}
 
-                try {
-                    const response = await fetch('/analyze', {
-                        method: 'POST',
-                        body: formData,
-                        headers: { 'ngrok-skip-browser-warning': 'true' }
-                    });
-                    const data = await response.json();
+// ═══════════════════════════════════════════════════════════════
+//  WAVEFORM ANIMATION
+// ═══════════════════════════════════════════════════════════════
+const BARS = 22;
+const bars = [];
 
-                    // If a newer analysis has already started, ignore this old result
-                    if (thisId !== analysisId) return;
+function buildWaveform() {
+  waveform.innerHTML = '';
+  for (let i = 0; i < BARS; i++) {
+    const b = document.createElement('div');
+    b.className = 'wave-bar';
+    waveform.appendChild(b);
+    bars.push(b);
+  }
+  voiceText.textContent = 'Listening…';
+  waveform.appendChild(voiceText);
+}
 
-                    isAnalyzing = false;
-                    updateStatus('Ready');
-                    speak(data.description);
-                } catch (err) {
-                    isAnalyzing = false;
-                    updateStatus('Error', 'Connection trouble.');
-                }
-            }, 'image/jpeg', 0.8);
-        }
+function animateWave(active) {
+  if (state.waveInterval) { clearInterval(state.waveInterval); state.waveInterval = null; }
+  if (!active) {
+    bars.forEach(b => { b.style.height = '4px'; b.classList.remove('active'); });
+    return;
+  }
+  state.waveInterval = setInterval(() => {
+    bars.forEach((b, i) => {
+      const h = 4 + Math.random() * 20;
+      b.style.height = h + 'px';
+      b.classList.toggle('active', h > 14);
+    });
+  }, 80);
+}
 
-        // ── Natural Speech ──
-        function speak(text) {
-            window.speechSynthesis.cancel();
-            stopButton.style.display = 'block';
-            updateStatus('Speaking', text);
+// ═══════════════════════════════════════════════════════════════
+//  CAMERA
+// ═══════════════════════════════════════════════════════════════
+async function startCamera() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+    });
+    video.srcObject = stream;
+    await new Promise(r => video.onloadedmetadata = r);
+    startVoiceRecognition();
+    startAutoScan();
+    buildWaveform();
+    animateWave(true);
+    pingServer();
+  } catch (err) {
+    setStatus('error');
+    responseText.textContent = 'Camera access denied. Please allow camera access and reload.';
+    showToast('📷 Camera permission needed');
+  }
+}
 
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.rate = speechRate;
-            utterance.onend = () => {
-                stopButton.style.display = 'none';
-                updateStatus('Ready');
-            };
-            window.speechSynthesis.speak(utterance);
-        }
+async function pingServer() {
+  try {
+    const res = await fetch('/ping');
+    const data = await res.json();
+    if (data.status === 'ok') {
+      showToast('✅ Server connected');
+      // Kick off first scan after 1.5s so models are warm
+      setTimeout(() => triggerAnalysis('full'), 1500);
+    }
+  } catch {
+    setStatus('error');
+    responseText.className = '';
+    responseText.textContent = 'Cannot reach server. Make sure Flask is running on port 5000.';
+    showToast('❌ Server unreachable');
+  }
+}
 
-        function stopAll() {
-            window.speechSynthesis.cancel();
-            stopButton.style.display = 'none';
-            updateStatus('Ready', 'Speech stopped.');
-        }
+// ═══════════════════════════════════════════════════════════════
+//  CAPTURE FRAME
+// ═══════════════════════════════════════════════════════════════
+function captureFrame(quality = 0.75) {
+  canvas.width  = video.videoWidth  || 640;
+  canvas.height = video.videoHeight || 480;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  return new Promise(res => canvas.toBlob(res, 'image/jpeg', quality));
+}
 
-        // ── Intelligent Auto Scan ──
-        // Only scans if the scene has changed and the camera is relatively still
-        function startAutoScan() {
-            if (autoScanTimer) clearInterval(autoScanTimer);
-            autoScanTimer = setInterval(() => {
-                if (isAnalyzing || window.speechSynthesis.speaking) return;
-                
-                // Simplified scene change detection
-                const currentHash = getTinyHash();
-                if (currentHash !== lastSceneHash) {
-                    lastSceneHash = currentHash;
-                    analyzeScene();
-                }
-            }, 12000); // 12 seconds check
-        }
+// ═══════════════════════════════════════════════════════════════
+//  SCENE ANALYSIS
+// ═══════════════════════════════════════════════════════════════
+async function triggerAnalysis(mode = 'full', findTarget = null) {
+  if (state.isAnalyzing) return;
+  state.isAnalyzing = true;
+  const thisId = ++state.analysisId;
+  const isFirstRun = state.analysisId === 1;
 
-        function getTinyHash() {
-            const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = 10; tempCanvas.height = 10;
-            tempCanvas.getContext('2d').drawImage(video, 0, 0, 10, 10);
-            return tempCanvas.toDataURL();
-        }
+  stopSpeaking(false);
+  setStatus('analyzing');
+  animateWave(false);
 
-        // ── Voice Commands (Continuous & Fast) ──
-        function startVoiceRecognition() {
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (!SpeechRecognition) return;
+  if (isFirstRun) {
+    responseText.className = '';
+    responseText.innerHTML = `<div class="typing-dots"><span></span><span></span><span></span></div> <span style="color:var(--muted);font-size:13px">First scan — warming up models…</span>`;
+  }
 
-            const recognition = new SpeechRecognition();
-            recognition.continuous = true;
-            recognition.interimResults = true;
+  try {
+    const blob = await captureFrame(mode === 'fast' ? 0.6 : 0.8);
+    const form = new FormData();
+    form.append('image', blob, 'frame.jpg');
+    form.append('mode', mode);
 
-            recognition.onresult = (event) => {
-                const result = event.results[event.results.length - 1];
-                const command = result[0].transcript.toLowerCase();
-                interimText.textContent = `"${command}"`;
+    if (findTarget) {
+      form.append('find', findTarget);
+    } else if (mode === 'text_only') {
+      form.append('find', 'text_only');
+    }
 
-                if (result.isFinal) {
-                    if (command.includes('stop') || command.includes('shut up') || command.includes('quiet')) {
-                        stopAll();
-                    } else if (command.includes('describe') || command.includes('what') || command.includes('see')) {
-                        stopAll();
-                        analyzeScene();
-                    } else if (command.includes('read') || command.includes('text')) {
-                        stopAll();
-                        analyzeScene('text_only');
-                    } else if (command.includes('where is') || command.includes('find')) {
-                        const target = command.replace('where is', '').replace('find', '').trim();
-                        stopAll();
-                        analyzeScene(target);
-                    }
-                }
-            };
+    const t0 = performance.now();
 
-            recognition.onend = () => recognition.start();
-            recognition.start();
-        }
-    </script>
+    const res = await fetchWithTimeout('/analyze', {
+      method: 'POST',
+      body:   form,
+      headers: { 'ngrok-skip-browser-warning': 'true' },
+    }, 60000);
+
+    if (thisId !== state.analysisId) return; // Superseded by newer request
+
+    const data = await res.json();
+    const latency = Math.round(performance.now() - t0);
+
+    state.isAnalyzing = false;
+    setStatus('ready');
+    animateWave(true);
+
+    if (data.description) {
+      responseText.className = '';
+      responseText.textContent = data.description;
+      latencyBadge.textContent = latency + 'ms';
+      latencyBadge.classList.add('visible');
+
+      // History
+      addToHistory(data.description);
+
+      // Objects strip
+      renderObjects(data.objects || []);
+
+      // Speak
+      speak(data.description);
+
+      if (data.cached) showToast('⚡ Instant — same scene');
+    }
+
+  } catch (err) {
+    if (thisId !== state.analysisId) return;
+    state.isAnalyzing = false;
+    setStatus('error');
+    animateWave(true);
+    responseText.className = '';
+    responseText.textContent = err.message.includes('timeout')
+      ? 'Analysis is taking longer than expected. The server is still processing — try clicking Describe again.'
+      : 'Connection error. Is the Flask server running?';
+    showToast('❌ ' + (err.message.includes('timeout') ? 'Response too slow' : 'Server unreachable'));
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  FETCH WITH TIMEOUT
+// ═══════════════════════════════════════════════════════════════
+function fetchWithTimeout(url, opts, ms) {
+  const ctrl = new AbortController();
+  const id = setTimeout(() => ctrl.abort(), ms);
+  return fetch(url, { ...opts, signal: ctrl.signal })
+    .finally(() => clearTimeout(id))
+    .catch(e => {
+      if (e.name === 'AbortError') throw new Error('timeout');
+      throw e;
+    });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  RENDER DETECTION BOXES + OBJECTS STRIP
+// ═══════════════════════════════════════════════════════════════
+function renderObjects(objects) {
+  // Detection overlay boxes
+  detLayer.innerHTML = '';
+  const vw = viewport.offsetWidth;
+  const vh = viewport.offsetHeight;
+  const natW = video.videoWidth  || 640;
+  const natH = video.videoHeight || 480;
+  const scaleX = vw / natW;
+  const scaleY = vh / natH;
+
+  objects.slice(0, 8).forEach((obj, i) => {
+    if (!obj.box) return;
+    const [x1, y1, x2, y2] = obj.box;
+    const div = document.createElement('div');
+    div.className = 'det-box';
+    div.style.cssText = `
+      left:   ${x1 * scaleX}px;
+      top:    ${y1 * scaleY}px;
+      width:  ${(x2 - x1) * scaleX}px;
+      height: ${(y2 - y1) * scaleY}px;
+      animation-delay: ${i * 40}ms;
+    `;
+    const label = document.createElement('div');
+    label.className = 'det-label';
+    label.textContent = obj.display_name;
+    div.appendChild(label);
+    detLayer.appendChild(div);
+
+    // Fade out boxes after 4s
+    setTimeout(() => {
+      div.style.transition = 'opacity 0.8s';
+      div.style.opacity = '0';
+    }, 4000);
+  });
+
+  // Objects strip
+  objectsStrip.innerHTML = '';
+  objects.slice(0, 10).forEach((obj, i) => {
+    const tag = document.createElement('div');
+    tag.className = 'obj-tag';
+    tag.style.animationDelay = (i * 30) + 'ms';
+    tag.innerHTML = `${obj.display_name} <span class="obj-tag-conf">${obj.confidence}%</span>`;
+    objectsStrip.appendChild(tag);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  HISTORY
+// ═══════════════════════════════════════════════════════════════
+function addToHistory(text) {
+  const trimmed = text.length > 50 ? text.slice(0, 47) + '…' : text;
+  state.history.unshift(trimmed);
+  if (state.history.length > 5) state.history.pop();
+
+  historyStrip.innerHTML = '';
+  state.history.forEach((h, i) => {
+    const chip = document.createElement('div');
+    chip.className = 'history-chip';
+    chip.textContent = h;
+    chip.title = h;
+    chip.onclick = () => speak(state.history[i]);
+    historyStrip.appendChild(chip);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  TEXT-TO-SPEECH
+// ═══════════════════════════════════════════════════════════════
+function speak(text) {
+  if (!text) return;
+  window.speechSynthesis.cancel();
+
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = 0.92;
+  u.pitch = 1.0;
+
+  // Prefer a natural voice if available
+  const voices = window.speechSynthesis.getVoices();
+  const preferred = voices.find(v =>
+    v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Samantha')
+  );
+  if (preferred) u.voice = preferred;
+
+  u.onstart = () => {
+    state.isSpeaking = true;
+    setStatus('speaking');
+    stopBtn.style.display = 'flex';
+    animateWave(false);
+  };
+  u.onend = u.onerror = () => {
+    state.isSpeaking = false;
+    stopBtn.style.display = 'none';
+    setStatus('ready');
+    animateWave(true);
+  };
+
+  window.speechSynthesis.speak(u);
+}
+
+function stopSpeaking(updateUI = true) {
+  window.speechSynthesis.cancel();
+  state.isSpeaking = false;
+  stopBtn.style.display = 'none';
+  if (updateUI) { setStatus('ready'); animateWave(true); }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  AUTO SCAN — smart interval, skips if scene unchanged
+// ═══════════════════════════════════════════════════════════════
+function startAutoScan() {
+  if (state.autoScanTimer) clearInterval(state.autoScanTimer);
+
+  state.autoScanTimer = setInterval(async () => {
+    if (state.isAnalyzing || state.isSpeaking) return;
+
+    const hash = getTinyHash();
+    if (hash === state.lastSceneHash) return;
+    state.lastSceneHash = hash;
+
+    await triggerAnalysis('full');
+  }, 9000); // Every 9 seconds — faster than before
+}
+
+function getTinyHash() {
+  try {
+    const t = document.createElement('canvas');
+    t.width = 16; t.height = 16;
+    t.getContext('2d').drawImage(video, 0, 0, 16, 16);
+    return t.toDataURL('image/jpeg', 0.1);
+  } catch { return ''; }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  VOICE RECOGNITION
+// ═══════════════════════════════════════════════════════════════
+function startVoiceRecognition() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { voiceText.textContent = 'No mic API'; return; }
+
+  const recognition = new SR();
+  recognition.continuous     = true;
+  recognition.interimResults = true;
+  recognition.lang           = 'en-IN'; // Better for Indian accents
+
+  recognition.onresult = (event) => {
+    const result  = event.results[event.results.length - 1];
+    const command = result[0].transcript.toLowerCase().trim();
+
+    // Show interim in waveform label area
+    if (!result.isFinal) {
+      voiceText.textContent = `"${command}"`;
+      return;
+    }
+
+    voiceText.textContent = 'Listening…';
+
+    // ── Command routing ──
+    if (/\b(stop|shut up|quiet|silence)\b/.test(command)) {
+      stopSpeaking();
+
+    } else if (/\b(describe|what do you see|look|scan|analyse|analyze)\b/.test(command)) {
+      triggerAnalysis('full');
+
+    } else if (/\b(read|text|what does it say|read text)\b/.test(command)) {
+      triggerAnalysis('text_only');
+
+    } else if (/\b(find|where is|where'?s|locate|search for)\b/.test(command)) {
+      const target = command
+        .replace(/find|where is|where's|locate|search for/g, '')
+        .replace(/\b(the|a|an|my)\b/g, '')
+        .trim();
+      if (target) {
+        showToast(`🔍 Looking for: ${target}`);
+        triggerAnalysis('full', target);
+      }
+
+    } else if (/\b(fast|quick|quickly)\b/.test(command)) {
+      triggerAnalysis('fast');
+
+    } else if (command.length > 2) {
+      // Unknown command — show it briefly
+      showToast(`💬 "${command}" — try "describe" or "find [object]"`);
+    }
+  };
+
+  recognition.onerror = (e) => {
+    if (e.error === 'not-allowed') {
+      voiceText.textContent = 'Mic denied';
+      showToast('🎤 Microphone access needed');
+    }
+  };
+
+  recognition.onend = () => {
+    // Auto-restart recognition
+    try { recognition.start(); } catch {}
+  };
+
+  try { recognition.start(); } catch {}
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════════════════════════════
+startCamera();
+
+// Load voices (async in some browsers)
+if (window.speechSynthesis) {
+  window.speechSynthesis.onvoiceschanged = () => {};
+}
+</script>
 </body>
 </html>
